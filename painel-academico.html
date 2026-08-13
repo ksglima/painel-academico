@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Acadêmico — Faltas, Provas e Notas</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --card:           #ffffff;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --baseline:       #c3c2b7;
+    --accent:         #2a78d6;
+    --accent-soft:    #eaf1fb;
+    --good:           #0ca30c;
+    --good-soft:      #e6f6e6;
+    --warning:        #b8790a;
+    --warning-soft:   #fdf1da;
+    --serious:        #c15a34;
+    --serious-soft:   #fbe9e1;
+    --critical:       #d03b3b;
+    --critical-soft:  #fbe6e6;
+    --muted-soft:     #f2f1ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --card:           #212120;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --baseline:       #383835;
+      --accent:         #3987e5;
+      --accent-soft:    #1c2c3f;
+      --good:           #0ca30c;
+      --good-soft:      #10321a;
+      --warning:        #fab219;
+      --warning-soft:   #3a2e10;
+      --serious:        #ec835a;
+      --serious-soft:   #3a2216;
+      --critical:       #e66767;
+      --critical-soft:  #3a1616;
+      --muted-soft:     #262625;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --card:           #212120;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --baseline:       #383835;
+    --accent:         #3987e5;
+    --accent-soft:    #1c2c3f;
+    --good:           #0ca30c;
+    --good-soft:      #10321a;
+    --warning:        #fab219;
+    --warning-soft:   #3a2e10;
+    --serious:        #ec835a;
+    --serious-soft:   #3a2216;
+    --critical:       #e66767;
+    --critical-soft:  #3a1616;
+    --muted-soft:     #262625;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding: 24px 16px 64px; }
+
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header.top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  header.top h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header.top p.sub { margin: 0 0 4px; color: var(--text-secondary); font-size: 13px; }
+  header.top p.saved { margin: 0; color: var(--text-muted); font-size: 11.5px; }
+  header.top p.saved .dot { color: var(--good); }
+  .header-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; justify-content: flex-end; }
+  .theme-toggle, .util-btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--text-secondary);
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+  }
+  .theme-toggle:hover, .util-btn:hover { background: var(--muted-soft); }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--grid); }
+  .tab-btn {
+    appearance: none; border: none; background: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--text-muted);
+    padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font-family: inherit;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ---------- Hero / stat tiles ---------- */
+  .hero-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .hero {
+    background: var(--accent-soft); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .hero.media { background: var(--muted-soft); }
+  .hero .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 0 0 4px; }
+  .hero .title { font-size: 17px; font-weight: 700; margin: 0; }
+  .hero .days, .hero .media-valor { font-size: 28px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero .days-label, .hero .media-label { font-size: 11px; color: var(--text-secondary); text-align: right; }
+
+  /* ---------- Empty state ---------- */
+  .empty-state {
+    border: 1px dashed var(--border); border-radius: 12px; padding: 24px 16px;
+    text-align: center; color: var(--text-muted); font-size: 13px; grid-column: 1 / -1;
+  }
+
+  /* ---------- Faltas cards ---------- */
+  .grid-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .card-head .materia { font-weight: 700; font-size: 14px; }
+  .card-head .codigo { font-size: 11px; color: var(--text-muted); }
+  .badge {
+    font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .badge.good { background: var(--good-soft); color: var(--good); }
+  .badge.warning { background: var(--warning-soft); color: var(--warning); }
+  .badge.serious { background: var(--serious-soft); color: var(--serious); }
+  .badge.critical { background: var(--critical-soft); color: var(--critical); }
+  .badge.muted { background: var(--muted-soft); color: var(--text-muted); }
+
+  .meter { height: 8px; border-radius: 4px; background: var(--muted-soft); overflow: hidden; margin-bottom: 8px; }
+  .meter-fill { height: 100%; border-radius: 4px; transition: width .2s ease; }
+  .meter-fill.good { background: var(--good); }
+  .meter-fill.warning { background: var(--warning); }
+  .meter-fill.serious { background: var(--serious); }
+  .meter-fill.critical { background: var(--critical); }
+
+  .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .fraction { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fraction .of { color: var(--text-muted); font-weight: 500; font-size: 13px; }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button {
+    width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text-primary); font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  .stepper button:hover { background: var(--muted-soft); }
+  .card .obs { font-size: 11.5px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
+  .card.na .meter { visibility: hidden; }
+
+  .card-remove {
+    border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 13px;
+    padding: 2px 4px;
+  }
+  .card-remove:hover { color: var(--critical); }
+
+  /* ---------- Add forms ---------- */
+  .add-row {
+    margin-top: 16px; border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+  }
+  .add-row .field { display: flex; flex-direction: column; gap: 4px; }
+  .add-row label { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .add-row input {
+    border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; font-size: 13px;
+    background: var(--card); color: var(--text-primary); font-family: inherit;
+  }
+  .add-row input[type="number"] { width: 72px; }
+  .add-row input[type="text"] { width: 130px; }
+  .add-btn {
+    border: none; background: var(--accent); color: #fff; border-radius: 7px;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .add-btn:hover { opacity: .9; }
+
+  /* ---------- Provas table ---------- */
+  table.provas { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.provas thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--grid);
+  }
+  table.provas tbody td { padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+  table.provas tbody tr:hover { background: var(--muted-soft); }
+  table.provas input[type="date"], table.provas input[type="text"], table.provas input[type="number"] {
+    border: 1px solid transparent; background: transparent; color: var(--text-primary);
+    font-family: inherit; font-size: 13px; border-radius: 6px; padding: 4px 6px; width: 100%;
+  }
+  table.provas input[type="number"] { font-variant-numeric: tabular-nums; }
+  table.provas td.col-nota { width: 64px; }
+  table.provas input[type="number"]::-webkit-outer-spin-button,
+  table.provas input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  table.provas input[type="number"] { -moz-appearance: textfield; }
+  table.provas input:hover, table.provas input:focus { border-color: var(--border); background: var(--card); }
+  table.provas .dias { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 12.5px; }
+  table.provas .row-remove { border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 13px; }
+  table.provas .row-remove:hover { color: var(--critical); }
+
+  footer.note {
+    margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--grid);
+    font-size: 11.5px; color: var(--text-muted); line-height: 1.6;
+  }
+  footer.note strong { color: var(--text-secondary); }
+
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 22px 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Painel Acadêmico</h1>
+      <p class="sub">Controle de faltas, calendário de provas e notas. Funciona offline, direto no navegador — não depende do Claude.</p>
+      <p class="saved" id="savedIndicator"><span class="dot">●</span> <span id="savedText">salvo automaticamente neste navegador</span></p>
+    </div>
+    <div class="header-actions">
+      <button class="util-btn" id="exportBtn">⭳ Exportar backup</button>
+      <button class="util-btn" id="importBtn">⭱ Importar backup</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+      <button class="util-btn" id="resetBtn">↺ Limpar tudo</button>
+      <button class="theme-toggle" id="themeToggle">Modo escuro</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="faltas">Faltas</button>
+    <button class="tab-btn" data-tab="provas">Provas</button>
+  </div>
+
+  <!-- ================= FALTAS ================= -->
+  <div class="panel active" id="panel-faltas">
+    <div class="grid-cards" id="faltasGrid"></div>
+
+    <div class="add-row">
+      <div class="field">
+        <label>Código</label>
+        <input type="text" id="newCodigo" placeholder="ex: PMT3390">
+      </div>
+      <div class="field">
+        <label>Matéria</label>
+        <input type="text" id="newMateria" placeholder="ex: Nova matéria">
+      </div>
+      <div class="field">
+        <label>Faltas atuais</label>
+        <input type="number" id="newAtual" min="0" value="0">
+      </div>
+      <div class="field">
+        <label>Limite (vazio = sem limite)</label>
+        <input type="number" id="newLimite" min="0" placeholder="—">
+      </div>
+      <button class="add-btn" id="addMateriaBtn">+ Adicionar matéria</button>
+    </div>
+  </div>
+
+  <!-- ================= PROVAS ================= -->
+  <div class="panel" id="panel-provas">
+    <div class="hero-row">
+      <div class="hero" id="proximaProvaHero"></div>
+      <div class="hero media" id="mediaHero"></div>
+    </div>
+
+    <table class="provas">
+      <thead>
+        <tr>
+          <th>Matéria</th>
+          <th>Avaliação</th>
+          <th>Data</th>
+          <th>Nota</th>
+          <th>Faltam</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="provasBody"></tbody>
+    </table>
+
+    <div class="add-row">
+      <div class="field">
+        <label>Matéria</label>
+        <input type="text" id="pMateria" placeholder="ex: Cálculo 1">
+      </div>
+      <div class="field">
+        <label>Avaliação</label>
+        <input type="text" id="pAvaliacao" placeholder="ex: P1">
+      </div>
+      <div class="field">
+        <label>Data</label>
+        <input type="date" id="pData">
+      </div>
+      <div class="field">
+        <label>Nota (opcional)</label>
+        <input type="number" id="pNota" step="0.1" placeholder="ex: 8.5">
+      </div>
+      <button class="add-btn" id="addProvaBtn">+ Adicionar prova</button>
+    </div>
+  </div>
+
+  <footer class="note">
+    <strong>Como funciona:</strong> esta é uma página em branco — adicione suas próprias matérias e provas nos formulários abaixo de cada aba. É um site independente que roda inteiramente no seu navegador (não depende do Claude). Suas edições ficam salvas automaticamente neste mesmo navegador, neste mesmo dispositivo — os dados não são enviados a nenhum servidor e não se misturam com os de outra pessoa que abra esta mesma página no aparelho dela. A contagem de dias até cada prova e a média do semestre se recalculam sozinhas conforme você preenche os dados.<br>
+    <strong>Importante:</strong> o salvamento é local ao navegador/dispositivo onde você usa a página — se abrir em outro navegador, outro perfil ou outro aparelho, não vai enxergar as mesmas edições. Use "Exportar backup" periodicamente (gera um .json) e "Importar backup" para levar seus dados para outro lugar ou recuperar depois de limpar o navegador.<br>
+    <strong>Nota:</strong> a média do semestre é a média aritmética simples das notas que você lançar nas provas — não considera pesos por avaliação. Se sua disciplina usa pesos diferentes por prova, use este número apenas como referência.
+  </footer>
+
+</div>
+
+<script>
+  // ---------------- State ----------------
+  // Guarda automaticamente no navegador (localStorage), então o painel funciona
+  // 100% offline e continua com seus dados da próxima vez que você abrir este
+  // mesmo arquivo .html neste mesmo navegador — sem depender do Claude.
+  const STORAGE_KEY = "painelAcademicoCompartilhado_v1";
+
+  // Página em branco por padrão — cada pessoa que abrir preenche as próprias
+  // matérias e provas; os dados ficam só no navegador/dispositivo de quem preencheu.
+  const DEFAULT_FALTAS = [];
+  const DEFAULT_PROVAS = [];
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.faltas) && Array.isArray(parsed.provas)) {
+          return { faltas: parsed.faltas, provas: parsed.provas };
+        }
+      }
+    } catch (e) { /* localStorage indisponível (ex: arquivo aberto em modo restrito) — usa os dados padrão */ }
+    return { faltas: JSON.parse(JSON.stringify(DEFAULT_FALTAS)), provas: JSON.parse(JSON.stringify(DEFAULT_PROVAS)) };
+  }
+
+  const initial = loadState();
+  let faltas = initial.faltas;
+  let provas = initial.provas;
+  let saveOk = true;
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ faltas, provas, savedAt: new Date().toISOString() }));
+      saveOk = true;
+    } catch (e) {
+      saveOk = false;
+    }
+    updateSavedIndicator();
+  }
+
+  function updateSavedIndicator() {
+    const txt = document.getElementById("savedText");
+    const dot = document.querySelector("#savedIndicator .dot");
+    if (!txt) return;
+    if (saveOk) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      txt.textContent = `salvo neste navegador às ${hh}:${mm}`;
+      dot.style.color = "var(--good)";
+    } else {
+      txt.textContent = "não foi possível salvar automaticamente neste navegador — use \"Exportar backup\"";
+      dot.style.color = "var(--critical)";
+    }
+  }
+
+  // ---------------- Helpers ----------------
+  function statusFor(atual, limite) {
+    if (atual === null || limite === null || limite === undefined || limite === "") return "muted";
+    const pct = limite > 0 ? atual / limite : 0;
+    if (atual >= limite) return "critical";
+    if (pct >= 0.66) return "serious";
+    if (pct >= 0.33) return "warning";
+    return "good";
+  }
+  function statusLabel(s) {
+    return { good: "Tranquilo", warning: "Atenção", serious: "Perto do limite", critical: "Limite atingido", muted: "Sem limite" }[s];
+  }
+  function fmtDate(iso) {
+    if (!iso) return null;
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  function daysUntil(iso) {
+    if (!iso) return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const target = new Date(iso + "T00:00:00");
+    return Math.round((target - today) / 86400000);
+  }
+  function diasLabel(n) {
+    if (n === null) return "Sem data definida";
+    if (n < 0) return `Há ${Math.abs(n)} dia(s)`;
+    if (n === 0) return "Hoje";
+    if (n === 1) return "Amanhã";
+    return `Em ${n} dias`;
+  }
+  function calcMedia(lista) {
+    const notas = lista
+      .map(p => p.nota)
+      .filter(n => n !== null && n !== undefined && n !== "" && !isNaN(+n))
+      .map(Number);
+    if (notas.length === 0) return { media: null, count: 0 };
+    const soma = notas.reduce((a, b) => a + b, 0);
+    return { media: soma / notas.length, count: notas.length };
+  }
+
+  // ---------------- Render: Faltas ----------------
+  function renderFaltas() {
+    const grid = document.getElementById("faltasGrid");
+    grid.innerHTML = "";
+
+    if (faltas.length === 0) {
+      grid.innerHTML = `<div class="empty-state">Nenhuma matéria adicionada ainda. Use o formulário abaixo para começar.</div>`;
+      return;
+    }
+
+    faltas.forEach((f, i) => {
+      const s = statusFor(f.atual, f.limite);
+      const card = document.createElement("div");
+      card.className = "card" + (s === "muted" ? " na" : "");
+      const pct = (f.atual !== null && f.limite) ? Math.min(100, (f.atual / f.limite) * 100) : 0;
+
+      card.innerHTML = `
+        <div class="card-head">
+          <div>
+            <div class="materia">${f.materia}</div>
+            <div class="codigo">${f.codigo}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="badge ${s}">${statusLabel(s)}</span>
+            <button class="card-remove" title="Remover matéria" data-i="${i}">✕</button>
+          </div>
+        </div>
+        <div class="meter"><div class="meter-fill ${s}" style="width:${pct}%"></div></div>
+        <div class="card-foot">
+          <div class="fraction">${f.atual === null ? "—" : f.atual} <span class="of">/ ${f.limite === null || f.limite === undefined ? "sem limite" : f.limite}</span></div>
+          <div class="stepper">
+            <button data-action="dec" data-i="${i}">−</button>
+            <button data-action="inc" data-i="${i}">+</button>
+          </div>
+        </div>
+        ${f.obs ? `<div class="obs">${f.obs}</div>` : ""}
+      `;
+      grid.appendChild(card);
+    });
+
+    grid.querySelectorAll("button[data-action]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = +btn.dataset.i;
+        const f = faltas[i];
+        if (f.atual === null) return;
+        if (btn.dataset.action === "inc") f.atual += 1;
+        if (btn.dataset.action === "dec") f.atual = Math.max(0, f.atual - 1);
+        renderFaltas();
+        saveState();
+      });
+    });
+    grid.querySelectorAll(".card-remove").forEach(btn => {
+      btn.addEventListener("click", () => {
+        faltas.splice(+btn.dataset.i, 1);
+        renderFaltas();
+        saveState();
+      });
+    });
+  }
+
+  // ---------------- Render: Provas ----------------
+  function renderProvas() {
+    const withDays = provas.map(p => ({ ...p, dias: daysUntil(p.data) }));
+    withDays.sort((a, b) => {
+      if (a.dias === null && b.dias === null) return 0;
+      if (a.dias === null) return 1;
+      if (b.dias === null) return -1;
+      return a.dias - b.dias;
+    });
+
+    // Hero: next upcoming (dias >= 0)
+    const hero = document.getElementById("proximaProvaHero");
+    const proxima = withDays.find(p => p.dias !== null && p.dias >= 0);
+    if (proxima) {
+      hero.innerHTML = `
+        <div>
+          <p class="label">Próxima avaliação</p>
+          <p class="title">${proxima.materia} — ${proxima.avaliacao} · ${fmtDate(proxima.data)}</p>
+        </div>
+        <div style="text-align:right;">
+          <div class="days">${proxima.dias}</div>
+          <div class="days-label">dia(s)</div>
+        </div>
+      `;
+    } else {
+      hero.innerHTML = `<div><p class="label">Próxima avaliação</p><p class="title">Nenhuma avaliação futura com data definida</p></div>`;
+    }
+
+    // Hero: média do semestre (aritmética simples das notas lançadas)
+    const mediaHero = document.getElementById("mediaHero");
+    const { media, count } = calcMedia(provas);
+    mediaHero.innerHTML = `
+      <div>
+        <p class="label">Média do semestre</p>
+        <p class="title">${count === 0 ? "Nenhuma nota lançada ainda" : `${count} nota(s) considerada(s)`}</p>
+      </div>
+      <div style="text-align:right;">
+        <div class="media-valor">${media === null ? "—" : media.toFixed(2)}</div>
+        <div class="media-label">média simples</div>
+      </div>
+    `;
+
+    const body = document.getElementById("provasBody");
+    body.innerHTML = "";
+
+    if (provas.length === 0) {
+      body.innerHTML = `<tr><td colspan="6" class="empty-state">Nenhuma prova adicionada ainda. Use o formulário abaixo para começar.</td></tr>`;
+      return;
+    }
+
+    // map back to original indices for editing
+    provas.forEach((p, origIdx) => p._idx = origIdx);
+    withDays.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.materia}<div style="font-size:10.5px;color:var(--text-muted)">${p.codigo || ""}</div></td>
+        <td><input type="text" value="${p.avaliacao}" data-field="avaliacao" data-i="${p._idx}"></td>
+        <td><input type="date" value="${p.data || ""}" data-field="data" data-i="${p._idx}"></td>
+        <td class="col-nota"><input type="number" step="0.1" value="${p.nota ?? ""}" placeholder="—" data-field="nota" data-i="${p._idx}"></td>
+        <td class="dias">${diasLabel(p.dias)}</td>
+        <td><button class="row-remove" data-i="${p._idx}">✕</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("change", () => {
+        const i = +inp.dataset.i;
+        const field = inp.dataset.field;
+        provas[i][field] = inp.value || null;
+        renderProvas();
+        saveState();
+      });
+    });
+    body.querySelectorAll(".row-remove").forEach(btn => {
+      btn.addEventListener("click", () => {
+        provas.splice(+btn.dataset.i, 1);
+        renderProvas();
+        saveState();
+      });
+    });
+  }
+
+  // ---------------- Add new entries ----------------
+  document.getElementById("addMateriaBtn").addEventListener("click", () => {
+    const codigo = document.getElementById("newCodigo").value.trim();
+    const materia = document.getElementById("newMateria").value.trim();
+    const atualEl = document.getElementById("newAtual");
+    const limiteEl = document.getElementById("newLimite");
+    if (!materia) { document.getElementById("newMateria").focus(); return; }
+    faltas.push({
+      codigo: codigo || "—",
+      materia,
+      atual: atualEl.value === "" ? 0 : +atualEl.value,
+      limite: limiteEl.value === "" ? null : +limiteEl.value,
+      obs: ""
+    });
+    document.getElementById("newCodigo").value = "";
+    document.getElementById("newMateria").value = "";
+    atualEl.value = 0;
+    limiteEl.value = "";
+    renderFaltas();
+    saveState();
+  });
+
+  document.getElementById("addProvaBtn").addEventListener("click", () => {
+    const materia = document.getElementById("pMateria").value.trim();
+    const avaliacao = document.getElementById("pAvaliacao").value.trim();
+    const data = document.getElementById("pData").value || null;
+    const notaEl = document.getElementById("pNota");
+    const nota = notaEl.value === "" ? null : +notaEl.value;
+    if (!materia || !avaliacao) return;
+    provas.push({ materia, codigo: "", avaliacao, data, nota });
+    document.getElementById("pMateria").value = "";
+    document.getElementById("pAvaliacao").value = "";
+    document.getElementById("pData").value = "";
+    notaEl.value = "";
+    renderProvas();
+    saveState();
+  });
+
+  // ---------------- Export / Import / Reset ----------------
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify({ faltas, provas, exportedAt: new Date().toISOString() }, null, 2)],
+      { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `painel-academico-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed.faltas) || !Array.isArray(parsed.provas)) throw new Error("formato inválido");
+        faltas = parsed.faltas;
+        provas = parsed.provas;
+        renderFaltas();
+        renderProvas();
+        saveState();
+        alert("Backup importado com sucesso.");
+      } catch (err) {
+        alert("Não foi possível ler este arquivo de backup.");
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (!confirm("Isso vai apagar todas as matérias e provas cadastradas neste navegador. Não tem como desfazer (a não ser que você tenha um backup exportado). Continuar?")) return;
+    faltas = [];
+    provas = [];
+    renderFaltas();
+    renderProvas();
+    saveState();
+  });
+
+  // ---------------- Tabs ----------------
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // ---------------- Theme toggle ----------------
+  const themeBtn = document.getElementById("themeToggle");
+  let dark = false;
+  themeBtn.addEventListener("click", () => {
+    dark = !dark;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    themeBtn.textContent = dark ? "Modo claro" : "Modo escuro";
+  });
+
+  renderFaltas();
+  renderProvas();
+  updateSavedIndicator();
+</script>
+</body>
+</html>
